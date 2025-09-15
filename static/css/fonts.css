@@ -1,0 +1,76 @@
+@font-face {
+    font-family: 'IBMMono';
+    src: url('fonts/IBM_Plex_Mono/IBMPlexMono-Regular.ttf');
+
+}
+
+@font-face {
+    font-family: 'IBMMonoBold';
+    src: url('fonts/IBM_Plex_Mono/IBMPlexMono-Bold.ttf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'IBMMonoSemiBold';
+    src: url('fonts/IBM_Plex_Mono/IBMPlexMono-SemiBold.ttf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'IBMSansCon';
+    src: url('fonts/IBM_Plex_Sans_Condensed/IBMPlexSansCondensed-Regular.ttf');
+}
+
+@font-face {
+    font-family: 'IBMSansConBold';
+    src: url('fonts/IBM_Plex_Sans_Condensed/IBMPlexSansCondensed-Bold.ttf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'IBMSans';
+    src: url('fonts/IBM_Plex_Sans/static/IBMPlexSans-Regular.ttf');
+}
+
+@font-face {
+    font-family: 'IBMSansSemiBold';
+    src: url('fonts/IBM_Plex_Sans/static/IBMPlexSans-SemiBold.ttf');
+}
+
+@font-face {
+    font-family: 'IBMSansLight';
+    src: url('fonts/IBM_Plex_Sans/static/IBMPlexSans-Light.ttf');
+}
+
+@font-face {
+    font-family: 'IBMSansBold';
+    src: url('fonts/IBM_Plex_Sans/static/IBMPlexSans-Bold.ttf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'IBMMonoLight';
+    src: url('fonts/IBM_Plex_Mono/IBMPlexMono-Light.ttf');
+}
+
+h2{
+    font-family: 'IBMMono', monospace;
+    font-weight: 400;
+    font-size: 24px;
+}
+h3{
+    font-family: 'IBMMonoLight', monospace;
+    font-weight: 400;
+    font-size: 15px;
+}
+output{
+    font-family: 'IBMMonoLight', monospace;
+    font-weight: 400;
+    font-size: 15px;
+}
+p{
+    font-family: 'IBMSans', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    color: black;
+}

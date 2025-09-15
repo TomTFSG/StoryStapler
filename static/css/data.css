@@ -1,0 +1,95 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #eae5d0;
+}
+#chartContainer {
+    position: absolute;
+    display:block;
+    width: 50%;
+    height: 90%;
+    top:0;
+    left:0;
+}
+#distributionChart {
+    position: absolute;
+    display:block;
+    width: 100%;
+}
+#list{
+    position: absolute;
+    display:block;
+    width: 49%;
+    height: 90%;
+    top:10%;
+    right:0;
+    font-family: 'IBMSans', sans-serif;
+    font-size: 12pt;
+    overflow-y: auto;
+}
+.btns {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 10%;
+    width:50%;
+    font-family: 'IBMSans', sans-serif;
+    font-size: 12pt;
+    display: inline-flex;
+}
+.btns button{
+    margin: 5px;
+    padding: 10px;
+    background-color: white;
+    color: black;
+    border: none;
+    border-radius: 5px;
+    width:15%;
+    font-family: 'IBMSans', sans-serif;
+    cursor: pointer;
+}
+.btns select{
+    margin: 5px;
+    padding: 10px;
+    background-color: white;
+    color: black;
+    border: none;
+    border-radius: 5px;
+    width:30%;
+    font-family: 'IBMSans', sans-serif;
+    cursor: pointer;
+}
+
+.returnBtn {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 50px;
+  height: 50px;
+  background-image: url('/static/assets/back.svg');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-color: transparent;
+  border:none;
+  border-radius: 7px;
+  z-index: 2;
+}
+
+.returnBtn:hover:enabled {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 50px;
+  height: 50px;
+  background-image: url('/static/assets/back.hover.svg');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-color: transparent;
+  border:none;
+  border-radius: 7px;
+  z-index: 2;
+}
