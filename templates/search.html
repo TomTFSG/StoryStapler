@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Story Stapler - Search</title>
+  <link rel="icon" type="image/png" href="/static/assets/staple.png">
+  <script src=".././static/js/p5/p5.js"></script>
+  <link rel="stylesheet" href="./static/css/fonts.css">
+  <link rel="stylesheet" href="./static/css/search.css">
+</head>
+<body>
+<button class="returnBtn" type="button" onclick="window.location.href='/'"></button>
+<button id="reloadScenesBtn"></button>
+<button id="helpBtn"></button>
+<input 
+  type="text" 
+  id="titleInput" 
+  placeholder="Enter your title" 
+  style="margin: 10px 0; display: block;" 
+/>
+<button class="stitchBtn" id="stitchBtn" onclick="stitchVideo()"></button>
+<div id="searchFormsContainer">
+  <div id="formsWrapper">
+  </div>
+  <button id="newFormBtn" onclick="addSearchForm()">
+    <img id="btnImg" src="/static/assets/addBtn.svg" alt="Add Search Form" height="60px" width="60px"/>
+  </button>
+</div>
+<div id="stitchPopup">
+  <div id="stitchContent">
+    <p id="stitchStatus">Waiting for stitching...</p>
+    <div id="p5-canvas-container" style="width:896px; height:504px;"></div>
+    <button id="closeStitchPopup" class="deletePopup" style="display:none" onclick="document.getElementById('stitchPopup').style.display='none';"></button>
+    <video id="stitchedVideo" controls style="max-width: 90%; display: none;"></video>
+    <button id="saveVideoBtn" style="display:none;" onclick="saveStitchedVideo()">Save Video</button>
+  </div>
+</div>
+<div id="helpPopup" style="display:none;">
+  <div id="helpContent">
+    <button id="closeHelpPopup" class="deletePopup" onclick="document.getElementById('helpPopup').style.display='none';"></button>
+    <p>
+      Welcome to the CREATE page! <br>
+      <br>
+      Here you can search for scenes from movies and TV shows to create your own video story.<br>
+      Use the Search bar to find actions, emotions, or specific moments.<br>
+      <br>
+      Use the slider to balance between dialogue and description in your search.<br>
+      Dialogue focuses on spoken words, while description captures visual elements and actions.<br>
+      <br>
+      You can use the "Create Filter" button to add filters like genre, year, emotion, and location to refine your search.<br>
+      After finding scenes, click on them to view details and add them to your queue.<br>
+      <br>
+      Use the reload button to refresh the scene database if you think new content is available.<br>
+      <br>
+      Use the "+" button to add more scenes.<br>
+      <br>
+      Finally, add a title and staple all your scenes together into a final film.<br>
+      Have Fun!
+
+    </p>
+  </div>
+</div>
+<script type="module">
+
+  let sceneImageUrls = [];  // Populate this from your queued scene data
+  let sceneImages = [];
+  let p5Instance = null;
+
+  let sketch = (p) => {
+    p.setMoveThreshold(0);
+    let imgPos = [];
+    let framePos = [];
+    let staplerX = [];
+    let step;
+    let timer;
+    let imgW, imgH;
+    let timerStart = 60;
+    let stop = false;
+    let spacing;
+    let imgHeights = [];
+
+    p.preload = () => {
+      sceneImages = sceneImageUrls.map(url => p.loadImage(url));
+    };
+
+    p.setup = () => {
+      p.createCanvas(896, 504);
+      imgW = p.width / 4;
+      imgH = (p.height * 9) / 16;
+      imgHeights = sceneImages.map(img => (img.height / img.width) * p.width/3);
+      step = 7;
+
+      staplerX[0] = -600;
+      staplerX[1] = -400;
+
+      spacing = imgW;
+      timer = timerStart;
+
+      for (let i = 1; i < 18; i += 2) {
+        let x = i * p.width / 16;
+        framePos.push(x);
+      }
+
+      for (let i = 0; i < sceneImages.length; i++) {
+        imgPos.push(p.width + i * (imgW + spacing));
+      }
+    };
+
+    p.draw = () => {
+      p.background(255);
+      p.rectMode(p.CENTER);
+
+      p.fill(p.color('#2b2b2b'));
+      p.rect(p.width / 2, p.height / 2, p.width, 300);
+
+      for (let i = 0; i < imgPos.length; i++) {
+        const img = sceneImages[i % sceneImages.length];
+        if (img) {
+          p.imageMode(p.CENTER);
+          p.image(img, imgPos[i], p.height / 2, p.width/3, imgHeights[i % imgHeights.length]);
+        }
+
+        if (!stop) {
+          imgPos[i] -= step;
+          if (imgPos[i] < -imgW / 2) {
+            let maxX = Math.max(...imgPos);
+            imgPos[i] = maxX + imgW + spacing;
+          }
+        }
+      }
+
+      for (let i = 0; i < imgPos.length; i++) {
+        if (imgPos[i] + imgW / 2 + spacing / 2 === p.width / 2) {
+          stop = true;
+        }
+      }
+
+      p.fill(255);
+      for (let j = 0; j < framePos.length; j++) {
+        p.rect(framePos[j], 1 * p.height / 5+35, 60, 25, 7);
+        p.rect(framePos[j], 4 * p.height / 5-35, 60, 25, 7);
+        if (!stop) {
+          framePos[j] -= step;
+          if (framePos[j] <= -p.width / 16) {
+            framePos[j] = 17 * p.width / 16;
+          }
+        }
+      }
+
+      p.fill(200);
+      p.rect(staplerX[0], p.height / 2, p.width / 8, 15, 5);
+      p.rect(staplerX[1], p.height / 2, p.width / 8, 15, 5);
+
+      if (!stop) {
+        staplerX[0] -= step;
+        staplerX[1] -= step;
+      }
+
+      if (stop) {
+        timer--;
+        if (timer === timerStart / 2) {
+          let minStap = staplerX.indexOf(Math.min(...staplerX));
+          staplerX[minStap] = p.width / 2;
+        } else if (timer === 0) {
+          timer = timerStart;
+          stop = false;
+        }
+      }
+    };
+  };
+
+
+  const btn = document.getElementById('newFormBtn');
+  const img = document.getElementById('btnImg');
+  const defaultSrc = '/static/assets/addBtn.svg';
+  const hoverSrc = '/static/assets/addBtn.hover.svg';
+
+  btn.addEventListener('mouseenter', () => {
+    if (!btn.disabled) {
+      img.src = hoverSrc;
+    }
+  });
+
+  btn.addEventListener('mouseleave', () => {
+    if (!btn.disabled) {
+      img.src = defaultSrc;
+    }
+  });
+
+  const genreColorMap = {
+    action: '#e88828',
+    adventure: '#e88828',
+    biography: '#26875f',
+    comedy: '#d0e223',
+    crime: '#3b97e2',
+    documentary:'#26875f',
+    drama: '#3b97e2',
+    fantasy: '#c640dd',
+    horror: '#4040a8',
+    musical: '#d83a7b',
+    mystery: '#3b97e2',
+    romance: '#d83a7b',
+    scifi: '#c640dd',
+    sitcom: '#d0e223',
+    sports: '#d83a7b',
+    superhero: '#c13030',
+    supernatural: '#c640dd',
+    thriller: '#4040a8',
+    war: '#26875f',
+    western: '#c13030',
+  };
+  const genreColorMapHover = {
+    action: '#b26520',
+    adventure: '#b26520',
+    biography: '#185137',
+    comedy: '#a6ad1c',
+    crime: '#2f7aad',
+    documentary:'#185137',
+    drama: '#2f7aad',
+    fantasy: '#9433a8',
+    horror: '#2d2d72',
+    musical: '#a32e63',
+    mystery: '#2f7aad',
+    romance: '#a32e63',
+    scifi: '#9433a8',
+    sitcom: '#a6ad1c',
+    sports: '#a32e63',
+    superhero: '#8c2525',
+    supernatural: '#9433a8',
+    thriller: '#2d2d72',
+    war: '#185137',
+    western: '#8c2525',
+  };
+
+  let NextFormId = 2;
+
+  import { initSegmentModal, openScenePopup, restoreSearchForm } from '/static/js/segmentModal.js';
+  initSegmentModal();
+  window.openScenePopup = openScenePopup;
+  window.handleSceneClick = handleSceneClick;
+  window.addSearchForm = addSearchForm;
+  window.showFilterOptions = showFilterOptions;
+  window.removeForm = removeForm;
+  window.removeFilter = removeFilter;
+  window.queueScene = queueScene;
+  window.stitchVideo = stitchVideo;
+  window.restoreSearchForm = restoreSearchForm;
+  let formCounter = 0;
+  window.queuedScenes = [];
+  let genreOptions = [];
+  let yearOptions = [];
+  let emotionOptions = [];
+  let locationOptions = [];
+  const originalFormHTML = {};
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const response = await fetch("/filters");
+    const filters = await response.json();
+    genreOptions = filters.genres;
+    yearOptions = filters.years;
+    emotionOptions = filters.emotions;
+    locationOptions = filters.locations;
+
+    // Initialize the first search bar
+    addSearchForm();    
+  });
+
+  function handleSceneClick(el) {
+    const sceneData = JSON.parse(decodeURIComponent(el.dataset.scene));
+    openScenePopup(sceneData,formID);
+  }
+  const popupS = document.getElementById('stitchPopup');
+  const closeButton = document.getElementById('closeStitchPopup');
+  popupS.addEventListener('click', function (event) {
+    
+    const content = document.getElementById('stitchContent');
+
+    // Only run if popup is currently visible
+    if (popupS.style.display !== 'none' && !content.contains(event.target)) {
+      popupS.style.display = 'none';
+      closeButton.style.display = 'none';
+    }
+  });
+
+
+
+  async function loadFiltersOnce() {
+    const resp = await fetch('/filters');
+    if (!resp.ok) {
+      alert('Failed to load filters');
+      return null;
+    }
+    return await resp.json();
+  }
+
+  function getAllFormIds() {
+    const wrappers = document.querySelectorAll('#formsWrapper > div[id$="-wrapper"]');
+    const formIds = Array.from(wrappers)
+      .map(div => div.id.replace('-wrapper', ''))
+      .filter(id => id); // ensure no empty strings
+    return formIds;
+  }
+
+  function addSearchForm() {
+    const container = document.getElementById('formsWrapper');
+
+    // Step 1: Get all existing form IDs
+    const formIds = getAllFormIds().map(id => parseInt(id)).sort((a, b) => a - b);
+
+    // Step 2: Find the first missing number
+    let formId = 1;
+    for (let i = 0; i < formIds.length; i++) {
+      if (formIds[i] !== i + 1) {
+        formId = i + 1;
+        break;
+      }
+      formId = formIds.length + 1;
+    }
+
+    // Step 3: Create and insert the new form wrapper
+    const wrapper = document.createElement('div');
+    wrapper.id = `${formId}-wrapper`;
+    wrapper.classList.add('search-form-block', 'form');
+    wrapper.setAttribute('draggable', 'true');
+
+    wrapper.innerHTML = `
+      <form id="${formId}">
+        <h2>New Scene:</h2>
+        <button type="button" class="removeBtn" onclick="removeForm('${formId}')"></button>
+        <input type="text" placeholder="What are you looking for?" name="query" size="40" autocomplete="off" required />
+        <div class="range-group">
+          <input type="range" class="dialogueSld" id="weight" name="weight" min="0" max="1" step="0.01" value="0.75" />
+          <div class="range-labels">
+            <span class="labelD">Dialogue</span>
+            <span class="labelD">Description</span>
+          </div>
+        </div>
+        <div id="${formId}-filter-buttons">
+          <button type="button" onclick="showFilterOptions('${formId}')" class="filterAddBtn">Create Filter</button>
+        </div>
+        <div id="${formId}-filters"></div>
+        <button type="submit" class="searchBtn">Search</button>
+      </form>
+      <div id="${formId}-results" class="results-block"></div>
+    `;
+    container.appendChild(wrapper);
+
+    const form = document.getElementById(formId);
+    form.addEventListener('submit', (e) => runSearch(e, formId));
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('formsWrapper');
+
+    container.addEventListener('pointerdown', (e) => {
+      if (e.target.type === 'range') {
+        const wrapper = e.target.closest('.search-form-block');
+        if (wrapper) {
+          wrapper.setAttribute('draggable', 'false');
+        }
+      }
+    });
+
+    container.addEventListener('pointerup', (e) => {
+      if (e.target.type === 'range') {
+        const wrapper = e.target.closest('.search-form-block');
+        if (wrapper) {
+          wrapper.setAttribute('draggable', 'true');
+        }
+      }
+    });
+  });
+
+  function showFilterOptions(formId) {
+    const availableFilters = ['emotion', 'location', 'genre', 'year'];
+    const form = document.getElementById(formId);
+    const btnContainer = document.getElementById(`${formId}-filter-buttons`);
+
+    // Remove any existing select or add button first to avoid duplicates
+    const existingSelect = btnContainer.querySelector('select');
+    const existingAddBtn = btnContainer.querySelector('button[type="button"]:not(:first-child)');
+    if (existingSelect) existingSelect.remove();
+    if (existingAddBtn) existingAddBtn.remove();
+
+    const addedFilters = new Set([...form.querySelectorAll('select')].map(sel => sel.name));
+
+    const yearAdded = addedFilters.has('yearStart') && addedFilters.has('yearEnd');
+    if (yearAdded) {
+      addedFilters.add('year');
+      addedFilters.delete('yearStart');
+      addedFilters.delete('yearEnd');
+    }
+
+    const remaining = availableFilters.filter(f => !addedFilters.has(f));
+
+    if (remaining.length === 0) {
+      alert('All filters added.');
+      return;
+    }
+
+    // Create new select dropdown with remaining filters
+    const menu = document.createElement('select');
+    menu.innerHTML = remaining.map(f => `<option value="${f}">${f}</option>`).join('');
+
+    // Create Add button
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Add';
+    confirmBtn.type = 'button';
+
+    confirmBtn.onclick = () => {
+      addFilterField(formId, menu.value);
+      menu.remove();
+      confirmBtn.remove();
+    };
+
+    btnContainer.appendChild(menu);
+    btnContainer.appendChild(confirmBtn);
+  }
+
+
+  function addFilterField(formId, filterName) {
+    const target = document.getElementById(`${formId}-filters`);
+    const filterId = `${formId}-${filterName}-filter`;
+
+    if (document.getElementById(filterId)) return; // prevent duplicate filters
+
+    let html = '';
+    if (filterName === 'emotion') {
+      html = `
+        <label class="lineF">Emotion:</label>
+        <select name="emotion">
+          ${emotionOptions.map(e => `<option value="${e}">${e.charAt(0).toUpperCase() + e.slice(1)}</option>`).join('')}
+        </select>
+      `;
+    } else if (filterName === 'location') {
+      html = `
+        <label class="lineF">Location:</label>
+        <select name="location">
+          ${locationOptions.map(l => `<option>${l}</option>`).join('')}
+        </select>
+      `;
+    }  else if (filterName === 'genre') {
+        // Normalize, deduplicate, and sort genres
+        const normalizedGenres = Array.from(
+          new Set(
+            genreOptions.map(g => g.trim().toLowerCase())
+          )
+        ).filter(g => g !== 'all').sort();
+
+        html = `
+          <label class="lineF">Genre:</label>
+          <select name="genre">
+            <option value="All">All</option>
+            ${normalizedGenres.map(g => {
+              const display = g.charAt(0).toUpperCase() + g.slice(1);
+              return `<option value="${display}">${display}</option>`;
+            }).join('')}
+          </select>
+        `;
+      } else if (filterName === 'year') {
+      html = `
+        <label class="lineF">Year Range:</label>
+        <select name="yearStart">
+          ${yearOptions.map(y => `<option value="${y}">${y}</option>`).join('')}
+        </select>
+        to
+        <select name="yearEnd">
+          ${yearOptions.map((y, i) => `<option value="${y}" ${i === yearOptions.length - 1 ? 'selected' : ''}>${y}</option>`).join('')}
+        </select>
+      `;
+    }
+
+    const container = document.createElement('div');
+    container.id = filterId;
+    container.innerHTML = `
+      <div>
+        ${html}
+        <button type="button" class="removeFil" onclick="removeFilter('${filterId}')"></button>
+      </div>
+    `;
+    target.appendChild(container);
+  }
+
+  function removeFilter(filterId) {
+    const element = document.getElementById(filterId);
+    if (element) element.remove();
+  }
+
+  function toggleFormAndResults(formId, showForm) {
+    const formWrapper = document.getElementById(`${formId}-wrapper`);
+    const form = formWrapper.querySelector('form');
+    const resultsDiv = document.getElementById(`${formId}-results`);
+
+    if (showForm) {
+      form.style.display = 'block';
+      resultsDiv.style.display = 'none';
+    } else {
+      form.style.display = 'none';
+      resultsDiv.style.display = 'block';
+    }
+  }
+
+  function removeForm(formId) {
+
+    if (formId === 'form0') {
+      alert("You cannot remove the first search form.");
+      return;
+    }
+
+    NextFormId=formId;
+    
+    const wrapper = document.getElementById(`${formId}-wrapper`);
+
+    if (originalFormHTML[formId]) {
+      const match = originalFormHTML[formId].match(/Scene (\w+) added to queue/);
+      if (match) {
+        const sceneId = match[1];
+        const idx = queuedScenes.indexOf(sceneId);
+        if (idx !== -1) {
+          queuedScenes.splice(idx, 1);  // Remove from queue
+          document.getElementById('stitchBtn').disabled = queuedScenes.length === 0;
+        }
+      }
+
+      delete originalFormHTML[formId];  // Clean up memory
+    }
+
+    if (wrapper) wrapper.remove();
+  }
+  async function runSearch(event, formId) {
+    event.preventDefault();
+    const form = document.getElementById(formId);
+    const wrapper= document.getElementById(formId+ '-wrapper');
+    const query = form.query.value.trim();
+    const weight = form.weight.value;
+    const emotion = form.emotion ? form.emotion.value : 'All';
+    const location = form.location ? form.location.value : 'All';
+    const genre = form.genre ? form.genre.value : 'All';
+    const yearStart = form.yearStart ? form.yearStart.value : yearOptions[0];
+    const yearEnd = form.yearEnd ? form.yearEnd.value : yearOptions[yearOptions.length - 1];
+
+    const url = new URL('/search', window.location.origin);
+    url.searchParams.append('query', query);
+    url.searchParams.append('weight', weight);
+    url.searchParams.append('emotion', emotion);
+    url.searchParams.append('location', location);
+    url.searchParams.append('genre', genre);
+    url.searchParams.append('year_start', yearStart);
+    url.searchParams.append('year_end', yearEnd);
+
+    const resp = await fetch(url);
+    const results = await resp.json();
+    displayResults(formId, results);
+    return false;
+  }
+
+  function normalizeGenre(genre) {
+    return genre.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  function applyGenreColorToSVG(svgElement, genreColor) {
+    const elements = svgElement.querySelectorAll('*');
+
+    elements.forEach(el => {
+      const fill = window.getComputedStyle(el).fill;
+      const stroke = window.getComputedStyle(el).stroke;
+
+      if (fill && fill !== 'rgb(255, 255, 255)' && fill !== '#ffffff' && fill !== 'white') {
+        el.style.fill = genreColor;
+      }
+
+      if (stroke && stroke !== 'rgb(255, 255, 255)' && stroke !== '#ffffff' && stroke !== 'white') {
+        el.style.stroke = genreColor;
+      }
+    });
+  }
+
+  function displayResults(formId, results) {
+    const div = document.getElementById(`${formId}-results`);
+    div.innerHTML = ''; // Clear any old content
+
+    // Add Back button first
+    const backBtn = document.createElement('button');
+    backBtn.classList.add('backBtn');
+    backBtn.onclick = () => toggleFormAndResults(formId, true);
+    div.appendChild(backBtn);
+
+    // Add a line break for spacing
+    div.appendChild(document.createElement('br'));
+
+    if (results.length === 0) {
+      div.appendChild(document.createElement('p')).textContent = 'No results found.';
+    } else {
+      results.forEach((r, idx) => {
+        const varName = `scene_${formId}_${idx}`;
+        window[varName] = r;
+        
+        console.log(r);
+        const rawGenre = r.genres?.[0] || 'unknown';
+        const normalizedGenre = normalizeGenre(rawGenre);
+        console.log(`Raw genre: ${rawGenre}, Normalized: ${normalizedGenre}`);
+        const color = genreColorMap[normalizedGenre] || 'black';
+        const colorHover = genreColorMapHover[normalizedGenre] || 'black';
+        const svgPath = `/static/assets/genres/${normalizedGenre}.svg`;
+
+        const sceneItem = document.createElement('div');
+        sceneItem.className = 'scene-item';
+        sceneItem.style.backgroundColor = color;
+        sceneItem.style.transition = 'background-color 0.3s ease';
+
+        sceneItem.addEventListener('mouseenter', () => {
+          sceneItem.style.backgroundColor = colorHover;
+        });
+
+        sceneItem.addEventListener('mouseleave', () => {
+          sceneItem.style.backgroundColor = color;
+        });
+        if(r.type=="movie"){
+          sceneItem.innerHTML = `
+            <a href="#" onclick="openScenePopup(window['${varName}'], '${formId}'); return false;" style=" color: white;">
+              <img src="${svgPath}" alt="${rawGenre}" class="genre-icon" />
+              <span>${r.title}</span>
+            </a>
+          `;
+        }
+        else{
+          sceneItem.innerHTML = `
+            <a href="#" onclick="openScenePopup(window['${varName}'], '${formId}'); return false;" style=" color: white;">
+              <img src="${svgPath}" alt="${rawGenre}" class="genre-icon" />
+              <span>${r.series} - Season ${r.season} Episode ${r.episode}</span>
+            </a>
+          `;
+        }
+        div.appendChild(sceneItem);
+      });
+    }
+
+    toggleFormAndResults(formId, false);
+  }
+
+  async function queueScene(formId, sceneId) {
+    if (queuedScenes.length >= 5) {
+      alert('Queue full (max 5 scenes). Please stitch or clear queue.');
+      return;
+    }
+
+    const resp = await fetch('/queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scene_id: sceneId })
+    });
+    const data = await resp.json();
+
+    if (resp.ok && data.success) {
+      lastQueuedFormId = formId;
+      queuedScenes.push(sceneId);
+      document.getElementById('stitchBtn').disabled = false;
+
+      const wrapper = document.getElementById(`${formId}-wrapper`);
+
+      // Save original HTML only once
+      if (!originalFormHTML[formId]) {
+        originalFormHTML[formId] = wrapper.innerHTML;
+      }
+
+      // Extract and preserve the remove button
+      const removeBtn = wrapper.querySelector('.removeBtn');
+      const removeBtnClone = removeBtn.cloneNode(true); // clone to preserve events
+
+      // Replace content but insert the remove button
+      wrapper.innerHTML = `
+        <div>
+          <p>Scene ${sceneId} added to queue.</p>
+          <button id="${formId}-replaceBtn">Replace</button>
+        </div>
+      `;
+      wrapper.appendChild(removeBtnClone); // Append the original remove button
+
+      // Re-bind the click handler
+      document.getElementById(`${formId}-replaceBtn`).onclick = () => replaceScene(formId, sceneId);
+      removeBtnClone.onclick = () => removeForm(formId);
+
+    } else {
+      alert('Failed to queue scene: ' + data.message);
+    }
+  }
+
+  function replaceScene(formId, sceneId) {
+    // Remove from queue
+    const idx = queuedScenes.indexOf(sceneId);
+    if (idx !== -1) {
+      queuedScenes.splice(idx, 1);
+    }
+
+    // Restore original form HTML
+    const wrapper = document.getElementById(`${formId}-wrapper`);
+    wrapper.classList.add('form');
+    if (originalFormHTML[formId]) {
+      wrapper.innerHTML = originalFormHTML[formId];
+      wrapper.classList.add('search-form-block');
+      wrapper.setAttribute('draggable', 'true');
+      
+
+
+      // Re-attach submit event handler on restored form
+      const form = document.getElementById(formId);
+      form.addEventListener('submit', (e) => runSearch(e, formId));
+
+      // Remove saved original HTML to avoid stale cache
+      delete originalFormHTML[formId];
+    }
+
+    document.getElementById('stitchBtn').disabled = queuedScenes.length === 0;
+  }
+
+  async function queueAllScenesBeforeStitching() {
+    const wrappers = document.querySelectorAll('.queued');
+    if (wrappers.length === 0) {
+      alert("No scenes in queue.");
+      throw new Error("No scenes in queue.");
+    }
+
+    if (wrappers.length === 1) {
+      alert("Select at least 2 scenes to stitch.");
+      throw new Error("Too few scenes to stitch.");
+    }
+
+    const sceneImageUrls = [];
+    let queue_id = null;
+
+    for (const wrapper of wrappers) {
+      const scene_id = wrapper.dataset.sceneId;
+      const start_time = parseFloat(wrapper.dataset.start_time);
+      const end_time = parseFloat(wrapper.dataset.end_time);
+
+      // Extract <img> inside wrapper
+      const firstImg = wrapper.querySelector('img');
+      if (firstImg && firstImg.src) {
+        sceneImageUrls.push(firstImg.src);
+      }
+
+      try {
+        // Include queue_id if we already have one
+        const body = queue_id
+          ? { scene_id, start_time, end_time, queue_id }
+          : { scene_id, start_time, end_time };
+
+        const res = await fetch('/queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const text = await res.text();
+        console.log("Raw response:", text);
+
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error("JSON parse error", e);
+          throw new Error(`Invalid JSON for scene ${scene_id}`);
+        }
+
+        if (!data.success) {
+          throw new Error(`Queueing failed for scene ${scene_id}: ${data.message}`);
+        }
+
+        // Save queue_id from response (only first time will set it)
+        if (!queue_id && data.queue_id) {
+          queue_id = data.queue_id;
+        }
+
+      } catch (error) {
+        console.error("Queue error:", error);
+        alert(`Failed to queue scene ${scene_id}. Stitching aborted.`);
+        throw error;
+      }
+    }
+
+    console.log("✅ All scenes queued successfully.");
+
+    // Re-initialize the canvas with the image URLs
+    initializeSceneCanvas(sceneImageUrls);
+
+    return queue_id;
+  }
+
+  function initializeSceneCanvas(urls) {
+    sceneImageUrls = urls;  // This must be global for p5 preload()
+
+    if (p5Instance) {
+      p5Instance.remove();
+      p5Instance = null;
+    }
+    p5Instance = new p5(sketch, 'p5-canvas-container');
+  }
+
+  async function stitchVideo() {
+    try {
+      const queue_id = await queueAllScenesBeforeStitching();  // Validate and queue
+
+      // Show the popup UI...
+      const popup = document.getElementById('stitchPopup');
+      const statusText = document.getElementById('stitchStatus');
+      const videoElement = document.getElementById('stitchedVideo');
+      const p5CanvasContainer = document.getElementById('p5-canvas-container');
+      const closeButton = document.getElementById('closeStitchPopup');
+      const saveBtn = document.getElementById('saveVideoBtn');
+      const title = document.getElementById("titleInput").value || "My Story";
+
+      statusText.style.display = "block";
+      p5CanvasContainer.style.display = 'block';
+      statusText.textContent = ' ';
+      saveBtn.style.display= 'none';
+      videoElement.style.display = 'none';
+      popup.style.display = 'flex';
+      
+
+      // Send queue_id in POST body
+      const response = await fetch('/stitch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id,title }),
+      });
+
+      const text = await response.text();
+      console.log("Raw stitch response:", text);
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        statusText.textContent = "Stitching failed: invalid server response.";
+        return;
+      }
+
+      if (data.success && data.video_path) {
+        statusText.style.display = "none";
+        if (p5Instance) {
+          p5Instance.remove();
+          p5Instance = null;
+        }
+        p5CanvasContainer.style.display = 'none';
+        closeButton.style.display = 'block';
+        videoElement.src = data.video_path;
+        videoElement.style.display = 'block';
+        saveBtn.style.display = 'block';
+      } else {
+        statusText.textContent = 'Stitching failed: ' + (data.message || 'Unknown error');
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Stitching failed.");
+    }
+  }
+  window.saveStitchedVideo = async function() {
+    const video = document.getElementById('stitchedVideo');
+    if (!video.src) {
+      alert('No video to save!');
+      return;
+    }
+
+    try {
+      const response = await fetch(video.src);
+      if (!response.ok) throw new Error("Network response was not ok");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'stitched_video.mp4';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Failed to save video.");
+    }
+  }
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('formsWrapper');
+  let draggedElement = null;
+
+  container.addEventListener('dragstart', (e) => {
+    // If the drag started in a form control, cancel it
+    if (e.target.matches('input, textarea, select')) {
+      e.preventDefault();
+      return;
+    }
+
+    // Otherwise allow dragging of the wrapper
+    const block = e.target.closest('.search-form-block');
+    if (block) {
+      draggedElement = block;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', draggedElement.outerHTML);
+      setTimeout(() => { draggedElement.style.display = 'none'; }, 0);
+    }
+  });
+
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const target = e.target.closest('.search-form-block');
+    if (target && target !== draggedElement) {
+      const rect = target.getBoundingClientRect();
+      const next = (e.clientY - rect.top) > (rect.height / 2); // vertical order
+      container.insertBefore(draggedElement, next ? target.nextSibling : target);
+    }
+  });
+
+  container.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (draggedElement) {
+      draggedElement.style.display = '';
+      draggedElement = null;
+    }
+  });
+
+  container.addEventListener('dragend', () => {
+    if (draggedElement) {
+      draggedElement.style.display = '';
+      draggedElement = null;
+    }
+  });
+});
+
+document.getElementById('reloadScenesBtn').addEventListener('click', () => {
+  console.log('Reloading scenes...');
+
+  document.getElementById('btnImg').src = '/static/assets/addBtn.disable.svg';
+  document.querySelectorAll('.removeBtn').forEach(btn => btn.disabled = true);
+  document.getElementById('newFormBtn').disabled = true;
+  document.getElementById('reloadScenesBtn').disabled = true;
+  document.getElementById('stitchBtn').disabled = true;
+  document.querySelectorAll('.searchBtn').forEach(btn => btn.disabled = true);
+  document.querySelectorAll('.returnBtn').forEach(btn => btn.disabled = true);
+
+  fetch('/reload_scenes', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      console.log('Scenes reloaded:', data);
+      
+      document.getElementById('btnImg').src = '/static/assets/addBtn.svg';
+      document.getElementById('newFormBtn').disabled = false;
+      document.querySelectorAll('.removeBtn').forEach(btn => btn.disabled = false);
+      document.getElementById('reloadScenesBtn').disabled = false;
+      document.getElementById('stitchBtn').disabled = false;
+      document.querySelectorAll('.searchBtn').forEach(btn => btn.disabled = false);
+      document.querySelectorAll('.returnBtn').forEach(btn => btn.disabled = false);
+    })
+    .catch(err => {
+      console.log('Error reloading scenes.');
+      console.error(err);
+
+      document.querySelectorAll('.removeBtn').forEach(btn => btn.disabled = false);
+      document.getElementById('btnImg').src = '/static/assets/addBtn.svg';
+      document.getElementById('newFormBtn').disabled = false;
+      document.getElementById('reloadScenesBtn').disabled = false;
+      document.getElementById('stitchBtn').disabled = false;
+      document.querySelectorAll('.searchBtn').forEach(btn => btn.disabled = false);
+      document.querySelectorAll('.returnBtn').forEach(btn => btn.disabled = false);
+    });
+});
+
+const helpBtn = document.getElementById('helpBtn');
+const helpPopup = document.getElementById('helpPopup');
+const closeHelpPopup = document.getElementById('closeHelpPopup');
+
+helpBtn.addEventListener('click', () => {
+  helpPopup.style.display = 'flex';
+});
+
+// Close popup if clicking outside content
+helpPopup.addEventListener('click', function (event) {
+  const content = document.getElementById('helpContent');
+  if (!content.contains(event.target)) {
+    helpPopup.style.display = 'none';
+  }
+});
+</script>
+</body>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Story Stapler - Analyze</title>
+    <link rel="icon" type="image/png" href="/static/assets/staple.png">
+    <link rel="stylesheet" href="./static/css/fonts.css">
+    <link rel="stylesheet" href="./static/css/analyze.css">
+</head>
+<body>
+  <button class="returnBtn" type="button" onclick="window.location.href='/'"></button>
+  <div class="form-box">
+    <form action="/analyze" method="post" enctype="multipart/form-data" id="upload-form">
+      <input type="text" name="movie_code" placeholder="Movie Code" required/><br/>
+
+      <div class="genreSelects">
+        <label>Genre:</label><br/>
+        <select class="genre" name="genre1" required>
+          <option value="">-- Select Genre 1 --</option>
+          <option>Action</option><option>Adventure</option><option>Biography</option><option>Comedy</option><option>Crime</option>
+          <option>Documentary</option><option>Drama</option><option>Fantasy</option><option>Horror</option><option>Musical</option><option>Mystery</option>
+          <option>Romance</option><option>Sci-Fi</option><option>Sitcom</option><option>Sports</option><option>Superhero</option>
+          <option>Supernatural</option><option>Thriller</option><option>War</option><option>Western</option>
+        </select><br/>
+
+        <select class="genre" name="genre2">
+          <option value="">-- Select Genre 2 --</option>
+          <option>Action</option><option>Adventure</option><option>Biography</option><option>Comedy</option><option>Crime</option>
+          <option>Documentary</option><option>Drama</option><option>Fantasy</option><option>Horror</option><option>Musical</option><option>Mystery</option>
+          <option>Romance</option><option>Sci-Fi</option><option>Sitcom</option><option>Sports</option><option>Superhero</option>
+          <option>Supernatural</option><option>Thriller</option><option>War</option><option>Western</option>
+        </select><br/>
+
+        <select class="genre" name="genre3">
+          <option value="">-- Select Genre 3 --</option>
+          <option>Action</option><option>Adventure</option><option>Biography</option><option>Comedy</option><option>Crime</option>
+          <option>Documentary</option><option>Drama</option><option>Fantasy</option><option>Horror</option><option>Musical</option><option>Mystery</option>
+          <option>Romance</option><option>Sci-Fi</option><option>Sitcom</option><option>Sports</option><option>Superhero</option>
+          <option>Supernatural</option><option>Thriller</option><option>War</option><option>Western</option>
+        </select><br/>
+      </div>
+
+      <input type="text" name="year" placeholder="Year" required/><br/>
+      <div class="radio-group">
+        <div class="radio-options">
+          <label>Type:</label>
+          <label class="custom-radio">
+            <input type="radio" name="type" value="movie" checked>
+            <span class="radio-mark"></span>
+            MOVIE
+          </label>
+          <label class="custom-radio">
+            <input type="radio" name="type" value="series">
+            <span class="radio-mark"></span>
+            SERIES
+          </label>
+        </div>
+        <div class="bw-toggle">
+          <label>Black & White:</label>
+          <label class="switch">
+            <input type="checkbox" id="bw-switch" name="BW" value="false">
+            <span class="slider"></span>
+          </label>
+        </div>  
+      </div>
+      <input type="text" name="series" placeholder="Series Name"/><br/>
+      <input type="text" name="season" placeholder="Season"/><br/>
+      <input type="text" name="episode" placeholder="Episode"/><br/>
+      <input type="text" name="title" placeholder="Title" required/><br/>    
+      <div class="file-input-row">
+        <div class="file-group">
+          <label for="video">VIDEO:</label>
+          <div class="custom-file">
+            <input type="file" id="video" name="video" accept="video/*" required>
+            <span class="file-name" id="video-name">Choose file</span>
+          </div>
+        </div>
+
+        <div class="file-group">
+          <label for="subtitle">SUBTITLES:</label>
+          <div class="custom-file">
+            <input type="file" id="subtitle" name="subtitle" accept=".srt">
+            <span class="file-name" id="subtitle-name">Choose file</span>
+          </div>
+        </div>
+      </div>
+    <button type="submit">Process</button>
+    </form>
+  </div>
+    <div class="status-box" style:="display:none;">
+      <!--
+      <progress id="progress" max="100" value="0" height="360px" width="640px"></progress></progress>
+      -->
+      <div class="masked-progress-container">
+        <img id="progress-image" src="static/assets/loading/bars/loading_0.png" alt="Progress Image" />
+        <div id="mask-overlay"></div>
+        <img id="stapler" src="static/assets/loading/staplers/stapler_open_0.png" alt="Progress Stapler" />
+      </div>
+      <p id="status-message" style="margin-top: 10px; text-align: center; font-size: 14px; color: black;"></p>
+      <button id="cancel-analysis" type="button" style="margin-top: 20px;">Cancel</button>
+    </div>
+  <script src="https://cdn.jsdelivr.net/npm/event-source-polyfill@latest"></script>
+  <script>
+
+    const BGgenreColors = {
+    action: '#e88828',
+    adventure: '#e88828',
+    biography: '#26875f',
+    comedy: '#d0e223',
+    crime: '#4040a8',
+    documentary:'#26875f',
+    drama: '#3b97e2',
+    fantasy: '#c640dd',
+    horror: '#4040a8',
+    musical: '#d83a7b',
+    mystery: '#3b97e2',
+    romance: '#d83a7b',
+    scifi: '#c640dd',
+    sitcom: '#d0e223',
+    sports: '#e88828',
+    superhero: '#c13030',
+    supernatural: '#c640dd',
+    thriller: '#4040a8',
+    war: '#3b97e2',
+    western: '#c13030',
+  };
+  const genreColors = {
+    action: '#b26520',
+    adventure: '#b26520',
+    biography: '#185137',
+    comedy: '#2d2d72',
+    crime: '#2f7aad',
+    documentary:'#185137',
+    drama: '#2f7aad',
+    fantasy: '#9433a8',
+    horror: '#2d2d72',
+    musical: '#a32e63',
+    mystery: '#2f7aad',
+    romance: '#a32e63',
+    scifi: '#9433a8',
+    sitcom: '#a6ad1c',
+    sports: '#b26520',
+    superhero: '#8c2525',
+    supernatural: '#9433a8',
+    thriller: '#2d2d72',
+    war: '#2f7aad',
+    western: '#8c2525',
+  };
+  let staplerId = 0;
+  document.getElementById('video').addEventListener('change', function() {
+    document.getElementById('video-name').textContent = this.files[0]?.name || 'Choose file';
+  });
+
+  document.getElementById('subtitle').addEventListener('change', function() {
+    document.getElementById('subtitle-name').textContent = this.files[0]?.name || 'Choose file';
+  });
+
+  document.getElementById('upload-form').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const form = e.target;
+    const data = new FormData(form);
+
+    document.querySelector('.form-box').style.display = 'none';
+    document.querySelector('.returnBtn').style.display = 'none';
+    
+    const selectedGenre = form.querySelector('select[name="genre1"]').value.toLowerCase().replace(/[^a-z]/g, '');
+    const progr = document.getElementById('progress');
+    
+    
+    if (genreColors[selectedGenre]) {
+      if(selectedGenre=="action"){
+        staplerId = 4;
+      }
+      else if(selectedGenre=="adventure"){
+        staplerId = 4;
+      }
+      else if(selectedGenre=="biography"){
+        staplerId = 7;
+      }
+      else if(selectedGenre=="comedy"){
+        staplerId = 3;
+      }
+      else if(selectedGenre=="crime"){
+        staplerId = 0;
+      }
+      else if(selectedGenre=="documentary"){
+        staplerId = 7;
+      }
+      else if(selectedGenre=="drama"){
+        staplerId = 0;
+      }
+      else if(selectedGenre=="fantasy"){
+        staplerId = 2;
+      }
+      else if(selectedGenre=="horror"){
+        staplerId = 5;
+      }
+      else if(selectedGenre=="musical"){
+        staplerId = 6;
+      }
+      else if(selectedGenre=="mystery"){
+        staplerId = 0;
+      }
+      else if(selectedGenre=="romance"){
+        staplerId = 6;
+      }
+      else if(selectedGenre=="scifi"){
+        staplerId = 2;
+      }
+      else if(selectedGenre=="sitcom"){
+        staplerId = 3;
+      }
+      else if(selectedGenre=="sports"){
+        staplerId = 6;
+      }
+      else if(selectedGenre=="superhero"){
+        staplerId = 1;
+      }
+      else if(selectedGenre=="supernatural"){
+        staplerId = 2;
+      }
+      else if(selectedGenre=="thriller"){
+        staplerId = 5;
+      }
+      else if(selectedGenre=="war"){
+        staplerId = 7;
+      }
+      else if(selectedGenre=="western"){
+        staplerId = 1;
+      }
+      else{
+        staplerId = 0; // default stapler
+      }
+      document.getElementById('stapler').src = `static/assets/loading/staplers/stapler_open_${staplerId}.png`;
+      document.getElementById('progress-image').src = `static/assets/loading/bars/loading_${staplerId}.png`;
+      //document.getElementById('progress-image').src = `static/assets/loading/bars/loading_8.png`;
+      
+      const stapler = document.getElementById('stapler');
+      
+      const image1 = `static/assets/loading/staplers/stapler_open_${staplerId}.png`;
+      const image2 = `static/assets/loading/staplers/stapler_closed_${staplerId}.png`;
+      
+      //const image1 = `static/assets/loading/staplers/stapler_open_8.png`;
+      //const image2 = `static/assets/loading/staplers/stapler_closed_8.png`;
+      let toggle = true;
+
+      setInterval(() => {
+        stapler.src = toggle ? image2 : image1;
+        toggle = !toggle;
+      }, 1000);
+      //progr.style.setProperty('--webkit-progress-value', genreColors[selectedGenre]);
+      //progr.style.backgroundColor = BGgenreColors[selectedGenre];
+    } else {
+      //progr.style.backgroundColor = '#000'; // fallback color
+    }
+    document.querySelector('.status-box').style.display = 'block';
+
+    // If BW switch is checked, add BW=true to form data
+    if (document.getElementById('bw-switch').checked) {
+      data.set('BW', 'true');
+    } else {
+      data.delete('BW'); // ensure no BW param if unchecked
+    }
+
+    
+    data.set('job_id',encodeURIComponent(document.querySelector('input[name="movie_code"]').value))
+
+    const response = await fetch('/analyze', {
+      method: 'POST',
+      body: data
+    });
+    if (!response.ok) {
+      console.error('Upload failed:', await response.text());
+      return;
+    }
+
+    // reset progress bar
+    const prog = document.getElementById('progress');
+    //prog.value = 0;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    async function read() {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split('\n\n');
+        buffer = events.pop(); // keep partial
+
+        for (const evt of events) {
+          const lines = evt.trim().split('\n');
+          let eventType = 'message', data = '';
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              eventType = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              data += line.slice(5).trim() + '\n';
+            }
+          }
+          data = data.trim();
+
+          if (eventType === 'status') {
+            //console.log(data);
+            setStatusMessage(data);
+
+            // only update when the scene is marked "Done."
+            const doneMatch = data.match(/^Scene\s+(\d+)\/(\d+):.*Done\./i);
+            if (doneMatch) {
+              const current = parseInt(doneMatch[1], 10);
+              const total   = parseInt(doneMatch[2], 10);
+              //prog.value = (current / total) * 100;
+              const percent = (current / total) * 100;
+              const overlay = document.getElementById('mask-overlay');
+              const stapler = document.getElementById('stapler');
+
+              const newWidth = `${100 - percent}%`;
+              overlay.style.width = newWidth;
+
+              // Wait for browser to render new width, then position stapler
+              requestAnimationFrame(() => {
+                const rect = overlay.getBoundingClientRect();
+                const containerRect = overlay.parentElement.getBoundingClientRect();
+                const offsetLeft = rect.left - containerRect.left;
+
+                const staplerWidth = stapler.offsetWidth;
+                stapler.style.left = `${offsetLeft + staplerWidth / 2}px`;
+              });
+            }
+          }
+          else if (eventType === 'done') {
+            setStatusMessage('✅ Analysis complete');
+            //prog.value = 100;
+            document.querySelector('.returnBtn').style.display = 'block';
+            document.getElementById('mask-overlay').style.width = '0%';
+          }
+        }
+      }
+    }
+
+    read();
+  });
+
+  function setStatusMessage(message) {
+    document.getElementById('status-message').textContent = message;
+  }
+
+  function updateTypeFields() {
+    const isSeries = document.querySelector('input[name="type"]:checked').value === 'series';
+
+    const seriesInput = document.querySelector('input[name="series"]');
+    const seasonInput = document.querySelector('input[name="season"]');
+    const episodeInput = document.querySelector('input[name="episode"]');
+
+    [seriesInput, seasonInput, episodeInput].forEach(input => {
+      input.disabled = !isSeries;
+      input.required = isSeries;
+      if (!isSeries) input.value = '';
+    });
+  }
+
+  // Initial check on page load
+  updateTypeFields();
+
+  // Add change listener to both radio buttons
+  document.querySelectorAll('input[name="type"]').forEach(radio => {
+    radio.addEventListener('change', updateTypeFields);
+  });
+
+  document.getElementById('cancel-analysis').addEventListener('click', async () => {
+  const movieCode = document.querySelector('input[name="movie_code"]').value;
+
+  const response = await fetch('/cancel', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: `job_id=${encodeURIComponent(movieCode)}`
+  });
+
+  const result = await response.json();
+  if (result.success) {
+    console.log('Job canceled');
+    document.querySelector('.status-box').style.display = 'none';
+    document.querySelector('.form-box').style.display = 'block';
+    document.querySelector('.returnBtn').style.display = 'block';
+    //alert('Analysis canceled.');
+    location.reload(); 
+  } else {
+    console.error('Cancel failed:', result.message);
+    alert('Failed to cancel job.');
+  }
+});
+
+  
+  </script>
+</body>
+</html>

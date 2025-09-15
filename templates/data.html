@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Story Stapler - Data Viewer</title>
+    <link rel="icon" type="image/png" href="/static/assets/staple.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="./static/css/fonts.css">
+    <link rel="stylesheet" href="./static/css/data.css">
+</head>
+<body>
+    <button class="returnBtn" type="button" onclick="window.location.href='/'"></button>
+    <div class="btns">
+        <button onclick="fetchAndRender('genre')">Genre</button>
+        <button onclick="fetchAndRender('maingenre')">Main Genre</button>
+        <button onclick="fetchAndRender('emotion')">Emotion</button>
+        <button onclick="fetchAndRender('location')">Location</button>
+        <button onclick="fetchAndRender('color')">Colors</button>
+        <select id="movieSelect" style="display: none;" onchange="filterByMovie()">
+            <option value="all">All Movies</option>
+        </select>
+    </div>
+    
+    <div id="chart-container" style="position: relative; width: 768px; height: 768px;">
+        <canvas id="distributionChart" height="768px" width="768px"></canvas>
+    </div>
+    <div id="list"></div>
+
+    <script>
+        let currentChart = "genre";
+        let chartInstance;
+        let fullData = [];
+
+        const ctx = document.getElementById('distributionChart').getContext('2d');
+
+        // ---- Helper functions for colors ----
+        function hexToRgb(hex) {
+            hex = hex.replace("#", "");
+            const bigint = parseInt(hex, 16);
+            return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+        }
+
+        function colorDistance(c1, c2) {
+            return Math.sqrt(
+                Math.pow(c1[0]-c2[0], 2) +
+                Math.pow(c1[1]-c2[1], 2) +
+                Math.pow(c1[2]-c2[2], 2)
+            );
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+
+
+        function findOrMergeColor(aggregates, hex, weight, threshold=45) {
+            const rgb = hexToRgb(hex);
+            for (let agg of aggregates) {
+                if (colorDistance(rgb, agg.rgb) < threshold) {
+                    agg.weight += weight;
+                    agg.rgb = [
+                        (agg.rgb[0]*agg.count + rgb[0]) / (agg.count+1),
+                        (agg.rgb[1]*agg.count + rgb[1]) / (agg.count+1),
+                        (agg.rgb[2]*agg.count + rgb[2]) / (agg.count+1)
+                    ];
+                    agg.count++;
+                    return;
+                }
+            }
+            aggregates.push({ rgb: rgb, weight: weight, count: 1 });
+        }
+
+        function renderChart(labels, data, label, backgroundColor) {
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderColor: '#eae5d0'
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        title: { display: true, text: label },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ": " + context.parsed.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            const parent = chartInstance.canvas.parentNode;
+            parent.style.width = '768px';
+            parent.style.height = '768px';
+        }
+
+        function populateMovieSelect(movies) {
+            const select = document.getElementById("movieSelect");
+            select.innerHTML = '<option value="all">All Movies</option>';
+            [...new Set(movies)]
+                .sort((a, b) => a.localeCompare(b))
+                .forEach(title => {
+                    const option = document.createElement("option");
+                    option.value = title;
+                    option.textContent = title;
+                    select.appendChild(option);
+                });
+        }
+
+        function filterByMovie() {
+            const selectedTitle = document.getElementById("movieSelect").value;
+            let filteredData = selectedTitle === "all"
+                ? fullData
+                : fullData.filter(d => d.title === selectedTitle);
+
+            if (currentChart === "color") {
+                renderColorChart(filteredData);
+                return;
+            }
+
+            filteredData.sort((a, b) => b.count - a.count);
+
+            const labels = filteredData.map(d => d.emotion || d.location);
+            const counts = filteredData.map(d => d.count);
+            const total = counts.reduce((a, b) => a + b, 0);
+            const palette = ['#e88828','#26875f','#d0e223','#3b97e2','#c640dd','#4040a8','#d83a7b','#c13030'];
+            const colors = labels.map((_, i) => palette[i % palette.length]);
+
+            renderChart(labels, counts, `${currentChart.charAt(0).toUpperCase() + currentChart.slice(1)} Distribution`, colors);
+
+            const listDiv = document.getElementById('list');
+            listDiv.innerHTML = "";
+            filteredData.forEach(item => {
+                const label = item.emotion || item.location;
+                const percent = ((item.count / total) * 100).toFixed(1);
+                const div = document.createElement('div');
+                div.textContent = `${label}: ${percent}%`;
+                listDiv.appendChild(div);
+            });
+        }
+
+        function renderColorChart(data) {
+            let aggregates = [];
+
+            data.forEach(scene => {
+                const duration = scene.end_time - scene.start_time;
+                for (const [hex, percent] of scene.dominant_colors) {
+                    const weight = duration * (percent / 100.0);
+                    findOrMergeColor(aggregates, hex, weight);
+                }
+            });
+
+            const totalWeight = aggregates.reduce((a, b) => a + b.weight, 0);
+
+            // 🔥 Sort descending by predominance
+            aggregates.sort((a, b) => b.weight - a.weight);
+
+            const labels = aggregates.map(agg => rgbToHex(
+                Math.round(agg.rgb[0]),
+                Math.round(agg.rgb[1]),
+                Math.round(agg.rgb[2])
+            ));
+            const counts = aggregates.map(agg => (agg.weight / totalWeight) * 100);
+            const colors = aggregates.map(
+                agg => `rgb(${Math.round(agg.rgb[0])},${Math.round(agg.rgb[1])},${Math.round(agg.rgb[2])})`
+            );
+
+            renderChart(labels, counts, "Color Distribution", colors);
+
+            const listDiv = document.getElementById('list');
+            listDiv.innerHTML = "";
+            aggregates.forEach((agg, i) => {
+                const hex = rgbToHex(Math.round(agg.rgb[0]), Math.round(agg.rgb[1]), Math.round(agg.rgb[2]));
+                const percent = ((agg.weight / totalWeight) * 100).toFixed(1);
+                const div = document.createElement('div');
+                div.textContent = `${hex}: ${percent}%`;
+                listDiv.appendChild(div);
+            });
+        }
+        
+
+        function fetchAndRender(type) {
+            currentChart = type;
+            const urlMap = {
+                genre: '/genre-distribution',
+                maingenre: '/maingenre-distribution',
+                emotion: '/emotion-distribution',
+                location: '/location-distribution',
+                color: '/color-distribution'
+            };
+            const url = urlMap[type];
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    fullData = data;
+
+                    if (type === "color") {
+                        renderColorChart(data);
+                    } else {
+                        let grouped = {};
+                        data.forEach(item => {
+                            let label = item.genre || item.emotion || item.location;
+                            label = label.trim().toLowerCase();
+                            if (!grouped[label]) grouped[label] = 0;
+                            grouped[label] += item.count;
+                        });
+
+                        const groupedArray = Object.entries(grouped)
+                            .map(([label, count]) => ({ label, count }))
+                            .sort((a, b) => b.count - a.count);
+
+                        const labels = groupedArray.map(d => d.label);
+                        const counts = groupedArray.map(d => d.count);
+                        const total = counts.reduce((a, b) => a + b, 0);
+                        const palette = ['#e88828','#26875f','#d0e223','#3b97e2','#c640dd','#4040a8','#d83a7b','#c13030'];
+                        const colors = labels.map((_, i) => palette[i % palette.length]);
+
+                        renderChart(labels, counts, `${type.charAt(0).toUpperCase() + type.slice(1)} Distribution`, colors);
+
+                        const listDiv = document.getElementById('list');
+                        listDiv.innerHTML = "";
+                        groupedArray.forEach(item => {
+                            const percent = ((item.count / total) * 100).toFixed(1);
+                            const div = document.createElement('div');
+                            div.textContent = `${item.label}: ${percent}%`;
+                            listDiv.appendChild(div);
+                        });
+                    }
+
+                    // Handle movie selector
+                    const movieSelect = document.getElementById("movieSelect");
+                    if (type === "emotion" || type === "location" || type === "color") {
+                        movieSelect.style.display = "inline-block";
+                        const movieTitles = data.map(d => d.title).filter(Boolean);
+                        populateMovieSelect(movieTitles);
+                    } else {
+                        movieSelect.style.display = "none";
+                    }
+                });
+        }
+
+        // Initial load
+        fetchAndRender('genre');
+    </script>
+</body>
+</html>

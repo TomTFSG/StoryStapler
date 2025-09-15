@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Story Stapler</title>
+  <link rel="icon" type="image/png" href="/static/assets/staple.png">
+  <script src=".././static/js/p5/p5.js"></script>
+  <script src=".././static/js/p5/addons/p5.sound.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      cursor:none;
+    }
+    canvas {
+      display: block;
+    }
+    .cursor{
+      width: 9em;
+      height: 9em;
+      position: absolute;
+    }
+    
+  </style>
+</head>
+<body>
+  <img class="cursor" src="/static/assets/stapler_open.png" alt="Custom Cursor"/>
+<script>
+  const cursor = document.querySelector('.cursor');
+  document.addEventListener('mousemove', (event) => {
+
+    const{width, height} = cursor.getBoundingClientRect();
+    cursor.style.left = `${event.clientX-10}px`;
+    cursor.style.top = `${event.clientY-30}px`;
+  });
+
+  let staples = [];
+  let placedStaples = [];
+  let click,release;
+
+  let rects = [];
+
+  let xA, xB, xC, y, w, h;
+
+  function preload() {
+    font = loadFont('/static/css/fonts/IBM_Plex_Sans/static/IBMPlexSans-Bold.ttf');
+    fontB= loadFont('/static/css/fonts/IBM_Plex_Sans/static/IBMPlexSans-Light.ttf');
+    for (let i = 0; i < 8; i++) {
+      staples.push(loadImage('/static/assets/staples/staple_.png'));
+    }
+    click=loadSound('static/assets/staples/sound/staple_click.mp3');
+    release=loadSound('static/assets/staples/sound/staple_release.mp3');
+  }
+
+  function setup() {
+    createCanvas(windowWidth, windowHeight);
+    rectMode(CENTER);
+    textAlign(CENTER, CENTER);
+    textFont(font);
+    textSize(100);
+
+    xA = width / 5;
+    xB = width / 2;
+    xC = 4 * width / 5;
+    y = (height / 2) + height / 6;
+    w = 200;
+    h = 110;
+
+    labels = [
+      { x: xA, y: y, w: w, h: h, label: 'ANALYZE', link: '/analyze_select' },
+      { x: xB, y: y, w: w, h: h, label: 'CREATE', link: '/search_select' },
+      { x: xC, y: y, w: w, h: h, label: 'DATA', link: '/data_select' }
+    ];
+    createInitialStaples(30);
+  }
+
+  function draw() {
+    background(color("#eae5d0"));
+    imageMode(CENTER);    
+
+    /*
+    push();
+      fill(0);
+      noStroke();
+      textSize(40); // Smaller
+      textStyle(BOLD);
+      angleMode(DEGREES);
+      translate(10, 160); // Adjust position as needed
+      rotate(-30); // Tilt counterclockwise (positive for clockwise)
+      textAlign(LEFT, TOP);
+      text('STORY STAPLER', 0, 0);
+    pop();
+    */
+    fill(0);
+    noStroke();
+    textSize(80);
+    textStyle(BOLD);
+    textFont(font);
+    text('STORY STAPLER', (width / 2)-(width / 3.5), (height / 3) + height / 7);
+
+    
+
+    
+
+    fill(0);
+    noStroke();
+    rect(width/2,y,width,h+50);
+    
+    
+    let pins =30;
+    let pinSpacing = width / pins;
+    for(let k=0; k<pins; k++){
+      let px = pinSpacing / 2 + k * pinSpacing;
+      fill(color("#f2f1eb"));
+      noStroke();
+      rect(px, y-h+45, 30, 15,7);
+      rect(px, y+h-45, 30, 15,7);
+    }
+    
+
+
+    let numRects = 7;
+    let spacing = width / numRects;
+    // Draw white rects across the band
+    rectMode(CENTER);
+    for (let i = 0; i < numRects; i++) {
+      let rx = spacing / 2 + i * spacing; // center each rect in its segment
+
+      fill(color("#f2f1eb"));
+      stroke(0);
+      strokeWeight(2);
+      rect(rx, y, w, h-5);
+
+      // Check if this rect position matches a label position
+      textFont(fontB);
+      textSize(40);
+      textStyle(NORMAL);
+      if(i==1){
+        fill(0);
+        noStroke();
+        textAlign(CENTER, CENTER);
+        text('ANALYZE', rx, y+ 140);
+        labels[0].x = rx;
+        labels[0].y = y+140;
+      }
+      if(i==3){
+        fill(0);
+        noStroke();
+        textAlign(CENTER, CENTER);
+        text('CREATE', rx, y+140);
+        labels[1].x = rx;
+        labels[1].y = y+140;
+      }
+      if(i==5){
+        fill(0);
+        noStroke();
+        textAlign(CENTER, CENTER);
+        text('DATA', rx, y+140);
+        labels[2].x = rx;
+        labels[2].y = y+140;
+      }
+    }
+
+
+    imageMode(CENTER);
+    for (let s of placedStaples) {
+      push();
+      translate(s.x, s.y);
+      angleMode(DEGREES); // Make sure this is outside loop or set once in setup()
+      rotate(s.angle);
+      imageMode(CENTER);
+      image(staples[s.index], 0, 0, 50, 7);
+      pop();
+    }
+
+  }
+
+  function mousePressed() {
+    cursor.setAttribute('src', '/static/assets/stapler_closed.png');
+    if (click.isPlaying()) {
+      click.stop();
+    }
+    click.play();
+  }
+
+
+  function mouseReleased() {
+    cursor.setAttribute('src', '/static/assets/stapler_open.png');
+    if (release.isPlaying()) {
+      release.stop();
+    }
+    release.play();
+
+    // Check if user clicked one of the rects
+    let i = round(random(0, 7));
+    let r = random(-35, 35);
+    push();
+    translate(mouseX, mouseY);
+    angleMode(DEGREES);
+    rotate(r);
+    imageMode(CENTER);
+    image(staples[i], 0, 0, 50, 7);
+    pop();
+    placedStaples.push({ index: i, x: mouseX, y: mouseY, angle: r });
+
+    for (let r of labels) {
+      if (
+        mouseX > r.x - r.w / 2 &&
+        mouseX < r.x + r.w / 2 &&
+        mouseY > r.y - r.h / 2 &&
+        mouseY < r.y + r.h / 2
+      ) {
+        window.location.href = r.link;
+        return; // stop further processing
+      }
+    }
+  }
+
+  function createInitialStaples(count) {
+    let attempts = 0;
+    let maxAttempts = count * 50; // allow more attempts for fairness
+
+    while (placedStaples.length < count && attempts < maxAttempts) {
+      attempts++;
+
+      let i = floor(random(staples.length));
+      let x = random(10, width - 10);
+      let y = random(10, height - 10);
+      let angle = random(-35, 35);
+
+      let stapleW = 50;
+      let stapleH = 7;
+
+      let valid = true;
+
+      // 🚫 Avoid labels
+      for (let r of labels) {
+        if (rectContains(x, y-100, r.x+10, r.y+0, r.w, r.h, 20)) {
+          valid = false;
+          break;
+        }
+      }
+
+      // 🚫 Avoid big black band
+      if (rectContains(x, y, width / 2, yBandCenter(), width, h + 50, 60)) {
+        valid = false;
+      }
+
+      // 🚫 Avoid white rects (7 slots)
+      let spacing = width / 7;
+      for (let j = 0; j < 7 && valid; j++) {
+        let rx = spacing / 2 + j * spacing;
+        if (rectContains(x, y, rx, yBandCenter(), w, h - 5, 30)) {
+          valid = false;
+        }
+      }
+
+      // 🚫 Avoid "STORY STAPLER" text area
+      let titleX = (width / 2)-(width / 3.5);
+      let titleY = (height / 3) + height / 7;
+      if (rectContains(x, y, titleX, titleY, 500, 0, 0)) {
+        valid = false;
+      }
+
+      // 🚫 Avoid overlapping other staples
+      for (let s of placedStaples) {
+        if (dist(x, y, s.x, s.y) < stapleW * 1.2) {
+          valid = false;
+          break;
+        }
+      }
+      //
+      if (valid) {
+        placedStaples.push({ index: i, x, y, angle });
+      }
+    }
+  }
+
+  function rectContains(x, y, rx, ry, rw, rh, pad = 0) {
+    return (
+      x > rx - rw / 2 - pad &&
+      x < rx + rw / 2 + pad &&
+      y > ry - rh / 2 - pad &&
+      y < ry + rh / 2 + pad
+    );
+  }
+  
+  function yBandCenter() {
+    return (height / 2) + height / 8;
+  }
+
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+  }
+</script>
+</body>
+</html>
